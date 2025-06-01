@@ -12,9 +12,8 @@
 </div>
 
 <div align="center">
-  <img src="https://avatars.githubusercontent.com/u/43720803?s=150&v=4" alt="VictoriaMetrics" width="150"/>
-  <img src="https://raw.githubusercontent.com/kubernetes/kubernetes/master/logo/logo.png" alt="Kubernetes" width="100"/>
-  <img src="https://raw.githubusercontent.com/grafana/grafana/master/public/img/grafana_icon.svg" alt="Grafana" width="100"/>
+  <img src="https://avatars.githubusercontent.com/u/43720803?s=150&v=4" alt="VictoriaMetrics" width="200"/>
+
 </div>
 
 ---

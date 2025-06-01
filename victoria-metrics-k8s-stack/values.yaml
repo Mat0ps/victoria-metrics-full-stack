@@ -1,0 +1,247 @@
+# This file contains only the essential components for basic monitoring
+
+global:
+  clusterLabel: cluster
+  license:
+    key: ""
+    keyRef: {}
+  cluster:
+    dnsDomain: cluster.local.
+
+nameOverride: "victoria-metrics-k8s-stack"
+tenant: "0"
+argocdReleaseOverride: ""
+
+# Essential: Victoria Metrics Operator
+victoria-metrics-operator:
+  enabled: true
+  crds:
+    plain: true
+    cleanup:
+      enabled: true
+      image:
+        repository: bitnami/kubectl
+        pullPolicy: IfNotPresent
+  serviceMonitor:
+    enabled: true
+  operator:
+    disable_prometheus_converter: false
+
+defaultDashboards:
+  enabled: true
+  defaultTimezone: utc
+  labels: {}
+  annotations: {}
+  dashboards: {}
+  victorialogs:
+    enabled: true
+  grafanaOperator:
+    enabled: false
+
+defaultRules:
+  additionalGroupByLabels: []
+  create: true
+  labels: {}
+  annotations: {}
+  rules: {}
+  group:
+    spec:
+      params: {}
+  rule:
+    spec:
+      labels: {}
+      annotations: {}
+  alerting:
+    spec:
+      labels: {}
+      annotations: {}
+  recording:
+    spec:
+      labels: {}
+      annotations: {}
+  groups:
+    general:
+      create: true
+    node:
+      create: true
+    kubelet:
+      create: true
+    kubeApiserver:
+      create: true
+
+# Essential: Single node Victoria Metrics for metrics storage
+vmsingle:
+  enabled: true
+  spec:
+    port: "8429"
+    retentionPeriod: "1"
+    replicaCount: 1
+    storage:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 20Gi
+
+# Essential: VMAgent for metrics collection
+vmagent:
+  enabled: true
+  spec:
+    port: "8429"
+    selectAllByDefault: true
+    scrapeInterval: 20s
+    extraArgs:
+      promscrape.streamParse: "true"
+      promscrape.dropOriginalLabels: "true"
+
+# Essential: VMAlert for alerting rules
+vmalert:
+  enabled: true
+  spec:
+    port: "8080"
+    selectAllByDefault: true
+    evaluationInterval: 20s
+
+# Essential: Alertmanager for alert handling
+alertmanager:
+  enabled: true
+  spec:
+    replicaCount: 1
+    port: "9093"
+    selectAllByDefault: true
+  config:
+    route:
+      receiver: "blackhole"
+    receivers:
+      - name: blackhole
+
+# Essential: Grafana for visualization
+grafana:
+  enabled: true
+  sidecar:
+    datasources:
+      enabled: true
+      initDatasources: true
+    dashboards:
+      enabled: true
+  extraInitContainers:
+    - name: "load-vm-ds-plugin"
+      image: "curlimages/curl:7.85.0"
+      command: [ "/bin/sh" ]
+      workingDir: "/var/lib/grafana"
+      securityContext:
+        runAsUser: 472
+        runAsNonRoot: true
+        runAsGroup: 472
+      args:
+        - "-c"
+        - |
+          set -ex
+          mkdir -p /var/lib/grafana/plugins/
+          ver=$(curl -s -L https://api.github.com/repos/VictoriaMetrics/victorialogs-datasource/releases/latest | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          curl -L https://github.com/VictoriaMetrics/victorialogs-datasource/releases/download/$ver/victoriametrics-logs-datasource-$ver.tar.gz -o /var/lib/grafana/plugins/vl-plugin.tar.gz
+          tar -xf /var/lib/grafana/plugins/vl-plugin.tar.gz -C /var/lib/grafana/plugins/
+          rm /var/lib/grafana/plugins/vl-plugin.tar.gz
+      volumeMounts:
+        - name: storage
+          mountPath: /var/lib/grafana
+
+# Essential: Node Exporter for node metrics
+prometheus-node-exporter:
+  enabled: true
+  vmScrape:
+    enabled: true
+    spec:
+      endpoints:
+        - port: metrics
+
+# Essential: Kube State Metrics for Kubernetes metrics
+kube-state-metrics:
+  enabled: true
+  vmScrape:
+    enabled: true
+    spec:
+      endpoints:
+        - port: http-metrics
+
+# Essential: Kubelet metrics scraping
+kubelet:
+  enabled: true
+  vmScrape:
+    kind: VMNodeScrape
+    spec:
+      scheme: "https"
+      honorLabels: true
+      interval: "30s"
+      tlsConfig:
+        insecureSkipVerify: true
+        caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      honorTimestamps: false
+
+# Essential: Kube API Server metrics
+kubeApiServer:
+  enabled: true
+  vmScrape:
+    spec:
+      endpoints:
+        - port: https
+          scheme: https
+          tlsConfig:
+            insecureSkipVerify: true
+
+# Essential: CoreDNS metrics (choose this OR kubeDns, not both)
+coreDns:
+  enabled: true
+  service:
+    enabled: true
+  vmScrape:
+    spec:
+      endpoints:
+        - port: metrics
+
+# Disable cluster components (enable only what you need)
+vmcluster:
+  enabled: false
+
+vmauth:
+  enabled: false
+
+kubeDns:
+  enabled: false
+
+kubeControllerManager:
+  enabled: false
+
+kubeEtcd:
+  enabled: false
+
+kubeScheduler:
+  enabled: false
+
+kubeProxy:
+  enabled: false
+
+# Essential datasources
+defaultDatasources:
+  extra:
+    - name: VictoriaLogs
+      type: victoriametrics-logs-datasource
+      access: proxy
+      url: http://victoria-logs-victoria-logs-cluster-vlselect.victoria-metrics.svc.cluster.local:9471
+      isDefault: false
+      jsonData:
+        maxLines: 1000
+        httpMethod: GET
+  victoriametrics:
+    datasources:
+      - name: VictoriaMetrics
+        type: prometheus
+        access: proxy
+        isDefault: true
+  alertmanager:
+    datasources:
+      - name: Alertmanager
+        access: proxy
+        jsonData:
+          implementation: prometheus

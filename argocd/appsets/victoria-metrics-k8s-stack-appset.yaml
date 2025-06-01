@@ -1,0 +1,59 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: victoria-metrics-k8s-stack
+  namespace: argocd
+spec:
+  generators:
+  - list:
+      elements:
+      # Only include applications where enabled: "true"
+    
+      # Victoria Metrics K8s Stack 
+      - name: victoria-metrics-k8s-stack
+        namespace: victoria-metrics
+        path: helm/victoria-metrics-k8s-stack
+        valuesFile: victoria-metrics-k8s-stack/values.yaml
+        enabled: "true"
+      
+      # Victoria Logs Cluster 
+      - name: victoria-logs-cluster
+        namespace: victoria-metrics
+        chart: victoria-logs-cluster
+        repoURL: https://victoriametrics.github.io/helm-charts/
+        targetRevision: "0.0.1"
+        valuesFile: victoria-logs-cluster/values.yaml
+        enabled: "true"
+      
+  template:
+    metadata:
+      name: '{{name}}'
+      namespace: argocd 
+      annotations:
+        argocd.argoproj.io/sync-wave: '{{wave}}'
+      labels:
+        app.kubernetes.io/part-of: victoria-metrics-stack
+        enabled: '{{enabled}}'
+    spec:
+      project: default
+      sources:
+      - repoURL: git@github.com:mata4dev/gameplay-workspace.git
+        path: '{{path}}'
+        targetRevision: HEAD
+        helm:
+          valueFiles:
+          - $values/gitops/applications/{{valuesFile}}
+          ignoreMissingValueFiles: true
+      - repoURL: git@github.com:mata4dev/gameplay-workspace.git
+        targetRevision: HEAD
+        ref: values
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true 

@@ -1,0 +1,239 @@
+# Essential values only for basic deployment
+
+global:
+  cluster:
+    dnsDomain: cluster.local.
+
+printNotes: true
+
+common:
+  # -- common for all components image configuration
+  image:
+    tag: ""
+
+serviceAccount:
+  create: false
+  name:
+  extraLabels: {}
+  annotations: {}
+  automountToken: true
+
+nameOverride: "victoria-logs-cluster"
+extraObjects: []
+
+vlselect:
+  enabled: true
+  name: ""
+  strategy: {}
+  image:
+    registry: ""
+    repository: victoriametrics/victoria-logs
+    tag: ""
+    variant: victorialogs
+    pullPolicy: IfNotPresent
+  
+  extraArgs:
+    envflag.enable: true
+    loggerFormat: json
+    httpListenAddr: :9471
+    http.shutdownDelay: 15s
+  
+  replicaCount: 1
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 200Mi
+    limits:
+      cpu: 200m
+      memory: 400Mi
+
+  service:
+    enabled: true
+    servicePort: 9471
+    type: ClusterIP
+
+  securityContext:
+    enabled: false
+
+  podSecurityContext:
+    enabled: false
+
+  ports:
+    name: http
+
+  probe:
+    readiness: {}
+    liveness: {}
+
+  horizontalPodAutoscaler:
+    enabled: false
+
+vlinsert:
+  enabled: true
+  name: ""
+  strategy: {}
+  image:
+    registry: ""
+    repository: victoriametrics/victoria-logs
+    tag: ""
+    variant: victorialogs
+    pullPolicy: IfNotPresent
+  
+  extraArgs:
+    envflag.enable: true
+    loggerFormat: json
+    httpListenAddr: :9481
+    http.shutdownDelay: 15s
+  
+  replicaCount: 1
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 200Mi
+    limits:
+      cpu: 200m
+      memory: 400Mi
+
+  service:
+    enabled: true
+    servicePort: 9481
+    type: ClusterIP
+
+  securityContext:
+    enabled: false
+
+  podSecurityContext:
+    enabled: false
+
+  ports:
+    name: http
+
+  probe:
+    readiness: {}
+    liveness: {}
+
+  horizontalPodAutoscaler:
+    enabled: false
+
+vlstorage:
+  enabled: true
+  name: "storage"
+  strategy: {}
+  image:
+    registry: ""
+    repository: victoriametrics/victoria-logs
+    tag: ""
+    variant: victorialogs
+    pullPolicy: IfNotPresent
+  
+  retentionPeriod: 7d
+  
+  extraArgs:
+    envflag.enable: true
+    loggerFormat: json
+    httpListenAddr: :9491
+    http.shutdownDelay: 15s
+  
+  replicaCount: 1
+  
+  persistentVolume:
+    enabled: true
+    name: "vlstorage-data"
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
+    mountPath: /storage
+  
+  resources:
+    requests:
+      cpu: 100m
+      memory: 512Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  service:
+    enabled: true
+    servicePort: 9491
+    type: ClusterIP
+    clusterIP: None
+
+  securityContext:
+    enabled: false
+
+  podSecurityContext:
+    enabled: false
+
+  ports:
+    name: http
+
+  probe:
+    readiness: {}
+    liveness: {}
+
+  horizontalPodAutoscaler:
+    enabled: false
+
+vmauth:
+  enabled: false
+
+vector:
+  enabled: true
+  role: Agent
+  dataDir: /vector-data-dir
+  resources: {}
+  args:
+    - -w
+    - --config-dir
+    - /etc/vector/
+  containerPorts:
+    - name: prom-exporter
+      containerPort: 9090
+      protocol: TCP
+  service:
+    enabled: false    
+  existingConfigMaps:
+    - vector-vl-config
+  customConfigNamespace: ""
+  customConfig:
+    data_dir: /vector-data-dir
+    api:
+      enabled: false
+      address: 0.0.0.0:8686
+      playground: false
+    sources:
+      k8s:
+        type: kubernetes_logs
+      internal_metrics:
+        type: internal_metrics
+    transforms:
+      parser:
+        type: remap
+        inputs: [k8s]
+        source: |
+          .log = parse_json(.message) ?? .message
+          del(.message)
+    sinks:
+      exporter:
+        type: prometheus_exporter
+        address: 0.0.0.0:9090
+        inputs: [internal_metrics]
+      vlogs:
+        type: elasticsearch
+        inputs: [parser]
+        endpoints: << include "vlogs.es.urls" . >>
+        mode: bulk
+        api_version: v8
+        compression: gzip
+        healthcheck:
+          enabled: false
+        request:
+          headers:
+            VL-Time-Field: timestamp
+            VL-Stream-Fields: stream,kubernetes.pod_name,kubernetes.container_name,kubernetes.pod_namespace
+            VL-Msg-Field: message,msg,_msg,log.msg,log.message,log
+            AccountID: "0"
+            ProjectID: "0"
+      

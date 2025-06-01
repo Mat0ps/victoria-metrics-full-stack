@@ -18,25 +18,6 @@
 
 ---
 
-A comprehensive observability solution for Kubernetes featuring both metrics and logs monitoring using VictoriaMetrics ecosystem. Supports both traditional Helm deployment and GitOps workflows via ArgoCD.
-
-## 📋 Table of Contents
-
-- [🏗️ Architecture](#️-architecture)
-- [🚀 Quick Start](#-quick-start)
-  - [Prerequisites](#prerequisites)
-  - [Option 1: Helm Installation](#option-1-helm-installation)
-  - [Option 2: GitOps with ArgoCD](#option-2-gitops-with-argocd)
-- [🌐 Access Services](#-access-services)
-- [⚙️ Configuration](#️-configuration)
-- [📋 Features](#-features)
-- [🔧 Customization](#-customization)
-- [📊 Default Dashboards](#-default-dashboards)
-- [🔍 Monitoring Targets](#-monitoring-targets)
-- [🚨 Alerting](#-alerting)
-- [🔧 Troubleshooting](#-troubleshooting)
-- [📚 Documentation](#-documentation)
-
 ## 🏗️ Architecture
 
 This repository contains two main components that work together to provide complete observability:

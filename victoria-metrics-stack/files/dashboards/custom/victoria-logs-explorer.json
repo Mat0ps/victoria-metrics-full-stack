@@ -292,7 +292,11 @@
   ],
   "refresh": "",
   "schemaVersion": 39,
-  "tags": [],
+  "tags": [
+    "victorialogs",
+    "explorer",
+    "logs"
+  ],
   "templating": {
     "list": [
       {

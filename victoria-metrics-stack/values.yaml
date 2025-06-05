@@ -1,0 +1,766 @@
+# This file contains only the essential components for basic monitoring
+
+global:
+  clusterLabel: cluster
+  license:
+    key: ""
+    keyRef: {}
+  cluster:
+    dnsDomain: cluster.local
+
+nameOverride: "vm-stack"
+fullnameOverride: ""
+tenant: "0"
+argocdReleaseOverride: ""
+
+# External services configuration
+external:
+  grafana:
+    host: ""
+    datasource: VictoriaMetrics
+  vm:
+    read:
+      url: ""
+    write:
+      url: ""
+
+vmsingle:
+  enabled: false
+  annotations: {}
+  spec:
+    port: "8429"
+    retentionPeriod: "30d"  # Retain metrics for 30 days
+    replicaCount: 1
+    extraArgs: {}
+    storage:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 100Gi  # Combined storage for single instance
+    resources:
+      limits:
+        cpu: 2000m
+        memory: 4Gi
+      requests:
+        cpu: 1000m
+        memory: 2Gi
+  ingress:
+    enabled: false
+    annotations: {}
+    labels: {}
+    path: ""
+    pathType: Prefix
+    ingressClassName: ""
+    hosts: []
+    extraPaths: []
+    tls: []
+
+
+vmcluster:
+  enabled: true
+  annotations: {}
+  spec:
+    retentionPeriod: "30d"
+    replicationFactor: 2
+    vmstorage:
+      replicaCount: 2
+      storageDataPath: /vm-data
+      storage:
+        volumeClaimTemplate:
+          spec:
+            resources:
+              requests:
+                storage: 50Gi  # Per storage node
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+        requests:
+          cpu: 500m
+          memory: 1Gi
+    vmselect:
+      enabled: true
+      port: "8481"
+      replicaCount: 2
+      cacheMountPath: /select-cache
+      extraArgs: {}
+      storage:
+        volumeClaimTemplate:
+          spec:
+            resources:
+              requests:
+                storage: 10Gi
+      resources:
+        limits:
+          cpu: 500m
+          memory: 1Gi
+        requests:
+          cpu: 200m
+          memory: 512Mi
+    vminsert:
+      enabled: true
+      port: "8480"
+      replicaCount: 2
+      extraArgs: {}
+      resources:
+        limits:
+          cpu: 500m
+          memory: 1Gi
+        requests:
+          cpu: 200m
+          memory: 512Mi
+
+# Essential: Victoria Metrics Operator
+victoria-metrics-operator:
+  enabled: true
+  crds:
+    plain: true
+    cleanup:
+      enabled: true
+      image:
+        repository: bitnami/kubectl
+        pullPolicy: IfNotPresent
+  serviceMonitor:
+    enabled: true
+  operator:
+    disable_prometheus_converter: false
+
+defaultDashboards:
+  enabled: true
+  defaultTimezone: utc
+  labels: {}
+  annotations: {}
+  grafanaOperator:
+    enabled: false
+    spec:
+      instanceSelector:
+        matchLabels:
+          dashboards: grafana
+      allowCrossNamespaceImport: false
+  dashboards:
+    victoriametrics-vmalert:
+      enabled: true
+    victoriametrics-operator:
+      enabled: true
+    node-exporter-full:
+      enabled: true
+  # Custom dashboards configuration
+  custom:
+    enabled: true
+    # Tags to apply to all custom dashboards
+    tags:
+      - "victoriametrics"
+      - "monitoring"
+      - "custom"
+      - "logs"
+    # Custom VictoriaLogs Explorer dashboard
+    victorialogs-explorer:
+      enabled: true
+      gnetId: ""
+      revision: 1
+      datasource: VictoriaLogs
+      # Additional tags specific to this dashboard
+      tags:
+        - "victorialogs"
+        - "explorer"
+        - "search"
+
+defaultRules:
+  additionalGroupByLabels: []
+  create: true
+  labels: {}
+  annotations: {}
+  rules: {}
+  group:
+    spec:
+      params: {}
+  rule:
+    spec:
+      labels: {}
+      annotations: {}
+  alerting:
+    spec:
+      labels: {}
+      annotations: {}
+  recording:
+    spec:
+      labels: {}
+      annotations: {}
+  groups:
+    etcd:
+      create: true
+      rules: {}
+    general:
+      create: true
+      rules: {}
+    k8sContainerCpuLimits:
+      create: true
+      rules: {}
+    k8sContainerCpuRequests:
+      create: true
+      rules: {}
+    k8sContainerCpuUsageSecondsTotal:
+      create: true
+      rules: {}
+    k8sContainerMemoryLimits:
+      create: true
+      rules: {}
+    k8sContainerMemoryRequests:
+      create: true
+      rules: {}
+    k8sContainerMemoryRss:
+      create: true
+      rules: {}
+    k8sContainerMemoryCache:
+      create: true
+      rules: {}
+    k8sContainerMemoryWorkingSetBytes:
+      create: true
+      rules: {}
+    k8sContainerMemorySwap:
+      create: true
+      rules: {}
+    k8sPodOwner:
+      create: true
+      rules: {}
+    k8sContainerResource:
+      create: true
+      rules: {}
+    kubeApiserver:
+      create: true
+      rules: {}
+    kubeApiserverAvailability:
+      create: true
+      rules: {}
+    kubeApiserverBurnrate:
+      create: true
+      rules: {}
+    kubeApiserverHistogram:
+      create: true
+      rules: {}
+    kubeApiserverSlos:
+      create: true
+      rules: {}
+    kubelet:
+      create: true
+      rules: {}
+    kubePrometheusGeneral:
+      create: true
+      rules: {}
+    kubePrometheusNodeRecording:
+      create: true
+      rules: {}
+    kubernetesApps:
+      create: true
+      rules: {}
+    kubernetesResources:
+      create: true
+      rules: {}
+    kubernetesStorage:
+      create: true
+      rules: {}
+    kubernetesSystem:
+      create: true
+      rules: {}
+    kubernetesSystemKubelet:
+      create: true
+      rules: {}
+    kubernetesSystemApiserver:
+      create: true
+      rules: {}
+    kubernetesSystemControllerManager:
+      create: true
+      rules: {}
+    kubeScheduler:
+      create: true
+      rules: {}
+    kubernetesSystemScheduler:
+      create: true
+      rules: {}
+    kubeStateMetrics:
+      create: true
+      rules: {}
+    nodeNetwork:
+      create: true
+      rules: {}
+    node:
+      create: true
+      rules: {}
+    vmagent:
+      create: true
+      rules: {}
+    vmsingle:
+      create: true
+      rules: {}
+    vmcluster:
+      create: true
+      rules: {}
+    vmHealth:
+      create: true
+      rules: {}
+    vmoperator:
+      create: true
+      rules: {}
+    alertmanager:
+      create: true
+      rules: {}
+  runbookUrl: https://runbooks.prometheus-operator.dev/runbooks
+
+# Provide custom recording or alerting rules to be deployed into the cluster.
+additionalVictoriaMetricsMap: {}
+
+# Essential: VMAgent for metrics collection
+vmagent:
+  enabled: true
+  annotations: {}
+  additionalRemoteWrites: []
+  spec:
+    port: "8429"
+    selectAllByDefault: true
+    scrapeInterval: 20s
+    externalLabels: {}
+    extraArgs:
+      promscrape.streamParse: "true"
+      promscrape.dropOriginalLabels: "true"
+  ingress:
+    enabled: false
+    annotations: {}
+    labels: {}
+    path: ""
+    pathType: Prefix
+    hosts: []
+    extraPaths: []
+    tls: []
+
+# Essential: VMAlert for alerting rules
+vmalert:
+  enabled: true
+  annotations: {}
+  remoteWriteVMAgent: false
+  spec:
+    port: "8080"
+    selectAllByDefault: true
+    evaluationInterval: 20s
+    extraArgs:
+      http.pathPrefix: "/"
+    externalLabels: {}
+  templateFiles: {}
+  additionalNotifierConfigs: {}
+  ingress:
+    enabled: false
+    annotations: {}
+    labels: {}
+    path: ""
+    pathType: Prefix
+    hosts: []
+    extraPaths: []
+    tls: []
+
+# Essential: Alertmanager for alert handling
+alertmanager:
+  enabled: true
+  annotations: {}
+  spec:
+    replicaCount: 1
+    port: "9093"
+    selectAllByDefault: true
+    image:
+      tag: v0.28.1
+    externalURL: ""
+    routePrefix: /
+    configSecret: ""
+  useManagedConfig: false
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      receiver: "blackhole"
+    receivers:
+      - name: blackhole
+  monzoTemplate:
+    enabled: true
+  templateFiles: {}
+  ingress:
+    enabled: false
+    annotations: {}
+    labels: {}
+    path: /
+    pathType: Prefix
+    hosts:
+      - alertmanager.domain.com
+    extraPaths: []
+    tls: []
+
+vmauth:
+  enabled: false  
+  annotations: {}
+  spec:
+    port: "8427"
+    resources:
+      limits:
+        cpu: 200m
+        memory: 256Mi
+      requests:
+        cpu: 100m
+        memory: 128Mi
+    unauthorizedUserAccessSpec:
+      disabled: false
+      discover_backend_ips: true
+      url_map:
+        - src_paths:
+            - '{{ .vm.read.path }}/.*'
+          url_prefix:
+            - '{{ urlJoin (omit .vm.read "path") }}/'
+        - src_paths:
+            - '{{ .vm.write.path }}/.*'
+          url_prefix:
+            - '{{ urlJoin (omit .vm.write "path") }}/'
+
+# Essential: Grafana for visualization
+grafana:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 10Gi
+    storageClassName: ""  # Use default storage class
+  securityContext:
+    runAsUser: 472
+    runAsGroup: 472
+    fsGroup: 472
+  initChownData:
+    enabled: false
+  sidecar:
+    datasources:
+      enabled: true
+      initDatasources: true
+      label: grafana_datasource
+    dashboards:
+      enabled: true
+      # Enable custom dashboards
+      searchNamespace: ALL
+      folderAnnotation: grafana_dashboard_folder
+      provider:
+        name: default
+        orgid: 1
+        foldersFromFilesStructure: true
+      folder: /var/lib/grafana/dashboards
+      defaultFolderName: default
+      multicluster: false
+  forceDeployDatasource: false
+  extraInitContainers:
+    - name: "load-vm-ds-plugin"
+      image: "curlimages/curl:7.85.0"
+      command: [ "/bin/sh" ]
+      workingDir: "/var/lib/grafana"
+      securityContext:
+        runAsUser: 472
+        runAsNonRoot: true
+        runAsGroup: 472
+      args:
+        - "-c"
+        - |
+          set -ex
+          mkdir -p /var/lib/grafana/plugins/
+          ver=$(curl -s -L https://api.github.com/repos/VictoriaMetrics/victorialogs-datasource/releases/latest | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+          curl -L https://github.com/VictoriaMetrics/victorialogs-datasource/releases/download/$ver/victoriametrics-logs-datasource-$ver.tar.gz -o /var/lib/grafana/plugins/vl-plugin.tar.gz
+          tar -xf /var/lib/grafana/plugins/vl-plugin.tar.gz -C /var/lib/grafana/plugins/
+          rm /var/lib/grafana/plugins/vl-plugin.tar.gz
+      volumeMounts:
+        - name: storage
+          mountPath: /var/lib/grafana
+  ingress:
+    enabled: false
+    annotations: {}
+    labels: {}
+    path: /
+    pathType: Prefix
+    hosts:
+      - grafana.domain.com
+    extraPaths: []
+    tls: []
+  vmScrape:
+    enabled: true
+    spec:
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: '{{ include "grafana.name" .Subcharts.grafana }}'
+      endpoints:
+        - port: '{{ .Values.grafana.service.portName }}'
+
+# Essential datasources
+defaultDatasources:
+  grafanaOperator:
+    enabled: false
+    annotations: {}
+    spec:
+      instanceSelector:
+        matchLabels:
+          dashboards: grafana
+      allowCrossNamespaceImport: false
+  victoriametrics:
+    perReplica: false
+    datasources:
+      - name: VictoriaMetrics
+        type: prometheus
+        access: proxy
+        isDefault: true
+      - name: VictoriaMetrics (DS)
+        isDefault: false
+        access: proxy
+        type: victoriametrics-metrics-datasource
+        version: "0.15.1"
+  alertmanager:
+    perReplica: false
+    datasources:
+      - name: Alertmanager
+        access: proxy
+        jsonData:
+          implementation: prometheus
+  extra:
+    - name: VictoriaLogs
+      type: victoriametrics-logs-datasource
+      access: proxy
+      url: http://victoria-logs-victoria-logs-cluster-vlselect.victoria-metrics.svc.cluster.local:9471
+      isDefault: false
+      jsonData:
+        maxLines: 1000
+        httpMethod: GET
+
+# Essential: Node Exporter for node metrics
+prometheus-node-exporter:
+  enabled: true
+  service:
+    labels:
+      jobLabel: node-exporter
+  extraArgs:
+    - --collector.filesystem.ignored-mount-points=^/(dev|proc|sys|var/lib/docker/.+|var/lib/kubelet/.+)($|/)
+    - --collector.filesystem.ignored-fs-types=^(autofs|binfmt_misc|bpf|cgroup2?|configfs|debugfs|devpts|devtmpfs|fusectl|hugetlbfs|iso9660|mqueue|nsfs|overlay|proc|procfs|pstore|rpc_pipefs|securityfs|selinuxfs|squashfs|erofs|sysfs|tracefs)$
+  vmScrape:
+    enabled: true
+    spec:
+      jobLabel: jobLabel
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: '{{ include "prometheus-node-exporter.name" (index .Subcharts "prometheus-node-exporter") }}'
+      endpoints:
+        - port: metrics
+          metricRelabelConfigs:
+            - action: drop
+              source_labels: [mountpoint]
+              regex: "/var/lib/kubelet/pods.+"
+
+# Essential: Kube State Metrics for Kubernetes metrics
+kube-state-metrics:
+  enabled: true
+  vmScrape:
+    enabled: true
+    spec:
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: '{{ include "kube-state-metrics.name" (index .Subcharts "kube-state-metrics") }}'
+          app.kubernetes.io/instance: '{{ include "vm.release" . }}'
+      endpoints:
+        - port: http
+          honorLabels: true
+          metricRelabelConfigs:
+            - action: labeldrop
+              regex: (uid|container_id|image_id)
+      jobLabel: app.kubernetes.io/name
+
+# Essential: Kubelet metrics scraping
+kubelet:
+  enabled: true
+  vmScrapes:
+    cadvisor:
+      enabled: true
+      spec:
+        path: /metrics/cadvisor
+    probes:
+      enabled: true
+      spec:
+        path: /metrics/probes
+    resources:
+      enabled: true
+      spec:
+        path: /metrics/resource
+    kubelet:
+      spec: {}
+  vmScrape:
+    kind: VMNodeScrape
+    spec:
+      scheme: "https"
+      honorLabels: true
+      interval: "30s"
+      scrapeTimeout: "5s"
+      tlsConfig:
+        insecureSkipVerify: true
+        caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      metricRelabelConfigs:
+        - action: labeldrop
+          regex: (uid)
+        - action: labeldrop
+          regex: (id|name)
+        - action: drop
+          source_labels: [__name__]
+          regex: (rest_client_request_duration_seconds_bucket|rest_client_request_duration_seconds_sum|rest_client_request_duration_seconds_count)
+      relabelConfigs:
+        - action: labelmap
+          regex: __meta_kubernetes_node_label_(.+)
+        - sourceLabels: [__metrics_path__]
+          targetLabel: metrics_path
+        - targetLabel: job
+          replacement: kubelet
+      honorTimestamps: false
+
+# Essential: Kube API Server metrics
+kubeApiServer:
+  enabled: true
+  vmScrape:
+    spec:
+      endpoints:
+        - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+          port: https
+          scheme: https
+          tlsConfig:
+            caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+            serverName: kubernetes
+      jobLabel: component
+      namespaceSelector:
+        matchNames:
+          - default
+      selector:
+        matchLabels:
+          component: apiserver
+          provider: kubernetes
+
+# Essential: CoreDNS metrics (choose this OR kubeDns, not both)
+coreDns:
+  enabled: true
+  service:
+    enabled: true
+    port: 9153
+    targetPort: 9153
+    selector:
+      k8s-app: kube-dns
+  vmScrape:
+    spec:
+      jobLabel: jobLabel
+      namespaceSelector:
+        matchNames: [kube-system]
+      endpoints:
+        - port: http-metrics
+          bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+
+kubeDns:
+  enabled: false
+  service:
+    enabled: false
+    ports:
+      dnsmasq:
+        port: 10054
+        targetPort: 10054
+      skydns:
+        port: 10055
+        targetPort: 10055
+    selector:
+      k8s-app: kube-dns
+  vmScrape:
+    spec:
+      jobLabel: jobLabel
+      namespaceSelector:
+        matchNames: [kube-system]
+      endpoints:
+        - port: http-metrics-dnsmasq
+          bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+        - port: http-metrics-skydns
+          bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+
+kubeControllerManager:
+  enabled: false
+  endpoints: []
+  service:
+    enabled: true
+    port: 10257
+    targetPort: 10257
+    selector:
+      component: kube-controller-manager
+  vmScrape:
+    spec:
+      jobLabel: jobLabel
+      namespaceSelector:
+        matchNames:
+          - kube-system
+      endpoints:
+        - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+          port: http-metrics
+          scheme: https
+          tlsConfig:
+            caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+kubeEtcd:
+  enabled: false
+  endpoints: []
+  service:
+    enabled: true
+    port: 2379
+    targetPort: 2379
+    selector:
+      component: etcd
+  vmScrape:
+    spec:
+      jobLabel: jobLabel
+      namespaceSelector:
+        matchNames: [kube-system]
+      endpoints:
+        - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+          port: http-metrics
+          scheme: https
+          tlsConfig:
+            caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+kubeScheduler:
+  enabled: false
+  endpoints: []
+  service:
+    enabled: true
+    port: 10259
+    targetPort: 10259
+    selector:
+      component: kube-scheduler
+  vmScrape:
+    spec:
+      jobLabel: jobLabel
+      namespaceSelector:
+        matchNames: [kube-system]
+      endpoints:
+        - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+          port: http-metrics
+          scheme: https
+          tlsConfig:
+            caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+kubeProxy:
+  enabled: false
+  endpoints: []
+  service:
+    enabled: true
+    port: 10249
+    targetPort: 10249
+    selector:
+      k8s-app: kube-proxy
+  vmScrape:
+    spec:
+      jobLabel: jobLabel
+      namespaceSelector:
+        matchNames: [kube-system]
+      endpoints:
+        - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+          port: http-metrics
+          scheme: https
+          tlsConfig:
+            caFile: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+
+# Add extra objects dynamically to this chart
+extraObjects: []

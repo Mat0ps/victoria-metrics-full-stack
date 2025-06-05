@@ -1,0 +1,24 @@
+{{- if and .Values.grafana.enabled .Values.defaultDashboards.custom.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "vm.managed.fullname" . }}-custom-dashboards
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "vm.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+  annotations:
+    {{- if .Values.defaultDashboards.custom.tags }}
+    grafana_dashboard_tags: "{{ join "," .Values.defaultDashboards.custom.tags }}"
+    {{- end }}
+data:
+  {{- range $path, $_ := .Files.Glob "files/dashboards/custom/*.json" }}
+  {{- $filename := base $path }}
+  {{ $filename }}: |
+{{ $.Files.Get $path | indent 4 }}
+  {{- end }}
+  {{- if .Files.Get "files/dashboards/victorialogs-dashboard.yaml" }}
+  victorialogs-dashboard.yaml: |
+{{ .Files.Get "files/dashboards/victorialogs-dashboard.yaml" | indent 4 }}
+  {{- end }}
+{{- end }} 

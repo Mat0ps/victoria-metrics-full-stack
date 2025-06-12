@@ -12,7 +12,7 @@
 </div>
 
 <div align="center">
-  <img src="https://media.licdn.com/dms/image/v2/D4E3DAQGcuAkqsJDmyg/image-scale_191_1128/image-scale_191_1128/0/1721059570179/victoriametrics_cover?e=1749384000&v=beta&t=0B8_TdcC4_i1ei0NrzOOn8eIHRkwP1En7ONJE9rYtu8" alt="VictoriaMetrics" width="900"/>
+  <img src="https://media.licdn.com/dms/image/v2/D4E3DAQGcuAkqsJDmyg/image-scale_191_1128/image-scale_191_1128/0/1721059570179/victoriametrics_cover?e=1750312800&v=beta&t=r14oA2NBDeWbB7Q5ceelZ960__SfJVC3RkNrrkKfBvM" alt="VictoriaMetrics" width="900"/>
 
 </div>
 
